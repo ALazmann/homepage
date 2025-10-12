@@ -1,1 +1,0 @@
-warning: be sure to add `/home/andrej/.cargo/bin` to your PATH to be able to run the installed binaries
