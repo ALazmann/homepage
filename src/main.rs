@@ -1,6 +1,6 @@
 use axum::{
     extract::Path,
-    http::{StatusCode, Uri},
+    http::StatusCode,
     response::{Html, IntoResponse},
     routing::get,
     Router,
@@ -9,42 +9,40 @@ use std::{fs, net::SocketAddr, path::PathBuf};
 
 #[tokio::main]
 async fn main() {
-    // Build routes
+    // Define routes
     let app = Router::new()
-        .route("/", get(serve_file))
-        .route("/*path", get(serve_file));
+        .route("/", get(index))
+        .route("/:page", get(serve_page));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
-    println!("🚀 Serving portfolio on http://{}", addr);
+    println!("🚀 Serving homepage at http://{}", addr);
 
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    // Axum 0.7 server start
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
 
-async fn serve_file(uri: Uri, Path(path): Path<String>) -> impl IntoResponse {
-    // Map URI to file path inside src/view
+// Handler for root ("/")
+async fn index() -> impl IntoResponse {
+    serve_file("index.html".to_string()).await
+}
+
+// Handler for other pages like "/about"
+async fn serve_page(Path(page): Path<String>) -> impl IntoResponse {
+    let filename = format!("{}.html", page);
+    serve_file(filename).await
+}
+
+// Reads HTML file from src/view or returns 404
+async fn serve_file(filename: String) -> impl IntoResponse {
     let mut file_path = PathBuf::from("src/view");
+    file_path.push(filename);
 
-    // Default to index.html
-    if path.is_empty() {
-        file_path.push("index.html");
-    } else {
-        file_path.push(&path);
-    }
-
-    // If path doesn’t end with .html, try adding it
-    if !file_path.extension().is_some() {
-        file_path.set_extension("html");
-    }
-
-    // Try reading the file
     match fs::read_to_string(&file_path) {
         Ok(contents) => Html(contents).into_response(),
         Err(_) => (
             StatusCode::NOT_FOUND,
-            Html("<h1>404 - Page Not Found</h1><p>Oops! Page doesn't exist.</p>").into_response(),
+            Html("<h1>404 - Page Not Found</h1><p>That page doesn’t exist.</p>"),
         )
             .into_response(),
     }
