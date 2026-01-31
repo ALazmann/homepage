@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // Run once on load and then on scroll
     window.addEventListener('scroll', revealOnScroll);
     revealOnScroll();
 });
